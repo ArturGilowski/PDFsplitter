@@ -1,18 +1,17 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { motion, AnimatePresence, Reorder } from "framer-motion";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   UploadCloud,
   FileText,
-  Settings2,
   Loader2,
   CheckCircle2,
   AlertCircle,
   Download,
   Plus,
   Trash2,
-  Edit3
+  RotateCcw,
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -21,11 +20,22 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Kolory zdefiniowane jako klasy Tailwind i odpowiadające im stylizacje
+const SECTION_COLORS = [
+  { border: "border-orange-500", bg: "bg-orange-500", shadow: "shadow-[0_0_15px_rgba(249,115,22,0.3)]" },
+  { border: "border-blue-500", bg: "bg-blue-500", shadow: "shadow-[0_0_15px_rgba(59,130,246,0.3)]" },
+  { border: "border-emerald-500", bg: "bg-emerald-500", shadow: "shadow-[0_0_15px_rgba(16,185,129,0.3)]" },
+  { border: "border-purple-500", bg: "bg-purple-500", shadow: "shadow-[0_0_15px_rgba(168,85,247,0.3)]" },
+  { border: "border-rose-500", bg: "bg-rose-500", shadow: "shadow-[0_0_15px_rgba(244,63,94,0.3)]" },
+  { border: "border-yellow-500", bg: "bg-yellow-500", shadow: "shadow-[0_0_15px_rgba(234,179,8,0.3)]" },
+  { border: "border-cyan-500", bg: "bg-cyan-500", shadow: "shadow-[0_0_15px_rgba(6,182,212,0.3)]" },
+  { border: "border-pink-500", bg: "bg-pink-500", shadow: "shadow-[0_0_15px_rgba(236,72,153,0.3)]" },
+];
+
 interface Section {
   id: string;
   title: string;
-  startPage: number | "";
-  endPage: number | "";
+  colorIndex: number;
 }
 
 type Step = "upload" | "analyzing" | "review" | "splitting" | "done" | "error";
@@ -34,8 +44,13 @@ export default function Home() {
   const [step, setStep] = useState<Step>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [fileId, setFileId] = useState<string>("");
-  const [totalPages, setTotalPages] = useState<number>(0);
+  const [pageUrls, setPageUrls] = useState<string[]>([]);
+  
+  // Zmapowanie która strona należy do której sekcji (pageIndex z 1-indexed do id sekcji)
+  const [pageAssignments, setPageAssignments] = useState<Record<number, string>>({});
+  
   const [sections, setSections] = useState<Section[]>([]);
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
 
   const [errorMessage, setErrorMessage] = useState("");
   const [downloadUrl, setDownloadUrl] = useState("");
@@ -43,7 +58,7 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // --- DRAG & DROP ---
+  // --- UPLOAD HANDLERS ---
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setIsDragging(true);
   }, []);
@@ -71,7 +86,27 @@ export default function Home() {
     setStep("error");
   };
 
-  // --- KROK 1: ANALIZA ---
+  // Krok 1: WIZUALIZACJA I ANALIZA
+  useEffect(() => {
+    if (file && step === "upload") {
+      startAnalysis();
+    }
+  }, [file, step]);
+
+  // Zablokowanie powiększania ekranu zapobiegające błędom w widoku aplikacji na PC
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => { if (e.ctrlKey) e.preventDefault(); };
+    const handleKeyDown = (e: KeyboardEvent) => { 
+      if (e.ctrlKey && (e.key === '=' || e.key === '-' || e.key === '+' || e.key === '0')) e.preventDefault(); 
+    };
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    window.addEventListener('keydown', handleKeyDown, { passive: false });
+    return () => {
+      window.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   const startAnalysis = async () => {
     if (!file) return;
     setStep("analyzing");
@@ -93,38 +128,101 @@ export default function Home() {
 
       const data = await response.json();
       setFileId(data.file_id);
-      setTotalPages(data.total_pages);
-      setSections(data.sections || []);
+      setPageUrls(data.page_urls || []);
+      
+      const initialSections: Section[] = [];
+      const assignments: Record<number, string> = {};
+      
+      if (data.sections && data.sections.length > 0) {
+        data.sections.forEach((sec: any, idx: number) => {
+           initialSections.push({
+             id: sec.id,
+             title: sec.title,
+             colorIndex: idx % SECTION_COLORS.length
+           });
+           
+           if (sec.pages && sec.pages.length > 0) {
+             sec.pages.forEach((p: number) => {
+               assignments[p] = sec.id;
+             });
+           }
+        });
+      }
+
+      setSections(initialSections);
+      setPageAssignments(assignments);
+      if (initialSections.length > 0) setActiveSectionId(initialSections[initialSections.length - 1].id);
+      
       setStep("review");
     } catch (err: any) {
       showError(err.message || "Błąd połączenia z serwerem.");
     }
   };
 
-  // --- KROK 2: EDYCJA ---
+  // Krok 2: ZARZĄDZANIE SEKCJAMI I PRZYPISYWANIE STRON
   const addSection = () => {
-    const lastPageValid = sections.length > 0 ? Number(sections[sections.length - 1].endPage) || 0 : 0;
-    const newStart = lastPageValid < totalPages ? lastPageValid + 1 : totalPages;
-    setSections([...sections, {
-      id: Math.random().toString(36).substring(7),
-      title: "Nowa Sekcja",
-      startPage: newStart,
-      endPage: totalPages
-    }]);
+    addSectionAt(sections.length);
   };
 
-  const updateSection = (id: string, field: keyof Section, value: string | number) => {
-    setSections(sections.map(s => s.id === id ? { ...s, [field]: value } : s));
+  const addSectionAt = (index: number) => {
+    const newId = Math.random().toString(36).substring(7);
+    const newColorIndex = sections.length % SECTION_COLORS.length;
+    const newSections = [...sections];
+    newSections.splice(index, 0, {
+      id: newId,
+      title: "",
+      colorIndex: newColorIndex
+    });
+    setSections(newSections);
+    setActiveSectionId(newId);
+  };
+
+  const updateSectionTitle = (id: string, title: string) => {
+    setSections(sections.map(s => s.id === id ? { ...s, title } : s));
   };
 
   const removeSection = (id: string) => {
     setSections(sections.filter(s => s.id !== id));
+    const newAssignments = { ...pageAssignments };
+    Object.keys(newAssignments).forEach(key => {
+      if (newAssignments[Number(key)] === id) delete newAssignments[Number(key)];
+    });
+    setPageAssignments(newAssignments);
+    if (activeSectionId === id) setActiveSectionId(null);
   };
 
-  // --- KROK 3: CIĘCIE ---
+  const assignPageToActiveSection = (pageNum: number) => {
+    if (!activeSectionId) {
+      alert("Najpierw powołaj nową sekcję lub kliknij wybraną po prawej stronie!");
+      return;
+    }
+    setPageAssignments(prev => {
+      const next = { ...prev };
+      if (next[pageNum] === activeSectionId) {
+        delete next[pageNum];
+      } else {
+        next[pageNum] = activeSectionId;
+      }
+      return next;
+    });
+  };
+
+  // Krok 3: CIĘCIE
   const startSplit = async () => {
-    if (sections.length === 0) {
-      alert("Musisz dodać przynajmniej jedną sekcję!");
+    const sectionsPayload = sections.map(sec => {
+      const pagesForSec = Object.entries(pageAssignments)
+        .filter(([_, secId]) => secId === sec.id)
+        .map(([pageNumStr, _]) => Number(pageNumStr));
+      
+      return {
+        id: sec.id,
+        title: sec.title || "Bez_Tytułu",
+        pages: pagesForSec
+      };
+    }).filter(sec => sec.pages.length > 0);
+
+    if (sectionsPayload.length === 0) {
+      alert("Żadna sekcja nie ma przypisanych stron! Kliknij w lewym panelu odpowiednie strony.");
       return;
     }
 
@@ -135,11 +233,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           file_id: fileId,
-          sections: sections.map(s => ({
-            ...s,
-            startPage: Number(s.startPage) || 1,
-            endPage: Number(s.endPage) || totalPages
-          }))
+          sections: sectionsPayload
         }),
       });
 
@@ -161,244 +255,297 @@ export default function Home() {
     setFile(null);
     setFileId("");
     setSections([]);
+    setPageUrls([]);
+    setPageAssignments({});
+    setActiveSectionId(null);
     setDownloadUrl("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const getPageSectionColor = (pageNum: number) => {
+    const secId = pageAssignments[pageNum];
+    if (!secId) return null;
+    const sec = sections.find(s => s.id === secId);
+    if (!sec) return null;
+    return SECTION_COLORS[sec.colorIndex];
   };
 
   return (
-    <main className="min-h-screen relative flex items-center justify-center p-4 sm:p-8 overflow-hidden bg-slate-900 text-slate-100 font-sans selection:bg-indigo-500/30">
-      {/* Background Gradients */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-violet-600/20 rounded-full blur-[120px] pointer-events-none" />
-
-      <div className="relative z-10 w-full max-w-4xl flex flex-col gap-8">
-
-        {/* HEADER */}
-        <div className="text-center space-y-4">
-          <motion.h1
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-4xl md:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white to-violet-300"
-          >
-            PDF AI Splitter
-          </motion.h1>
-          <p className="text-slate-400 max-w-xl mx-auto text-lg">
-            Inteligentne rozpoznawanie sekcji w zeskanowanych dokumentach.
-          </p>
+    <main className="flex flex-col md:flex-row h-screen w-full bg-black text-white p-4 gap-4 font-sans overflow-hidden">
+      
+      {/* LEWA STRONA - GŁÓWNA */}
+      <div className="flex-1 flex flex-col bg-neutral-900 border border-neutral-800 rounded-3xl pt-8 px-6 pb-6 relative overflow-hidden h-full">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-extrabold tracking-tight">PDF AI Splitter</h1>
+          {step !== "upload" && (
+            <button
+              onClick={reset}
+              title="Przerwij i zacznij od nowa z nowym plikiem"
+              className="flex items-center gap-2 px-4 py-2 bg-red-600/90 hover:bg-red-500 text-white font-bold text-sm rounded-xl transition-all shadow-[0_0_15px_rgba(220,38,38,0.2)] active:scale-95"
+            >
+              <RotateCcw size={18} /> Zacznij od nowa
+            </button>
+          )}
         </div>
-
-        {/* MAIN CONTAINER */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-slate-800/60 backdrop-blur-xl border border-slate-700 p-6 md:p-8 rounded-3xl shadow-2xl relative overflow-hidden"
-        >
+        
+        <div className="flex-1 relative overflow-y-auto custom-scrollbar pr-4 pb-12 rounded-xl">
           <AnimatePresence mode="wait">
-
-            {/* 1. UPLOAD & ERROR */}
+            
+            {/* UPLOAD VIEW */}
             {(step === "upload" || step === "error") && (
               <motion.div
                 key="upload"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20, filter: "blur(5px)" }}
-                className="flex flex-col gap-6"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="h-full flex flex-col items-center justify-center p-4"
               >
-                {!file ? (
-                  <div
-                    onDragOver={onDragOver}
-                    onDragLeave={onDragLeave}
-                    onDrop={onDrop}
-                    onClick={() => fileInputRef.current?.click()}
-                    className={cn(
-                      "border-2 border-dashed rounded-2xl flex flex-col items-center justify-center py-16 px-6 text-center cursor-pointer transition-all duration-300 group",
-                      isDragging
-                        ? "border-indigo-400 bg-indigo-500/10 shadow-[0_0_30px_rgba(99,102,241,0.2)]"
-                        : "border-slate-600 hover:border-indigo-500/50 hover:bg-slate-700/30"
-                    )}
-                  >
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="application/pdf" className="hidden" />
-                    <div className="bg-slate-800 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform duration-300">
-                      <UploadCloud size={40} className="text-indigo-400" />
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-200 mb-2">Przeciągnij i upuść PDF</h3>
-                    <p className="text-slate-400">lub kliknij, aby wybrać plik.</p>
-                  </div>
-                ) : (
-                  <div className="bg-slate-900/60 border border-slate-700 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 w-full">
-                      <div className="p-3 bg-emerald-500/20 rounded-xl">
-                        <FileText size={32} className="text-emerald-400" />
-                      </div>
-                      <div className="truncate">
-                        <h4 className="font-semibold text-slate-200 truncate pr-4">{file.name}</h4>
-                        <p className="text-sm text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-3 w-full sm:w-auto shrink-0 justify-end">
-                      <button onClick={reset} className="px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
-                        Zmień
-                      </button>
-                      <button onClick={startAnalysis} className="px-6 py-2 bg-indigo-500 hover:bg-indigo-400 text-white font-medium rounded-xl shadow-lg shadow-indigo-500/25 transition-all hover:-translate-y-0.5 whitespace-nowrap">
-                        Analizuj OCR
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <div
+                  onDragOver={onDragOver}
+                  onDragLeave={onDragLeave}
+                  onDrop={onDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    "w-full max-w-xl mx-auto border-2 border-dashed rounded-3xl flex flex-col items-center justify-center py-24 px-6 text-center cursor-pointer transition-all duration-300",
+                    isDragging
+                      ? "border-white bg-white/5"
+                      : "border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800/50"
+                  )}
+                >
+                  <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="application/pdf" className="hidden" />
+                  <UploadCloud size={64} className="text-neutral-500 mb-6" />
+                  <h3 className="text-2xl font-semibold mb-2">Wgraj swój plik PDF</h3>
+                  <p className="text-neutral-500 text-lg">Przeciągnij i upuść lub kliknij, aby wybrać.</p>
+                </div>
 
                 {step === "error" && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl">
-                    <AlertCircle className="shrink-0 mt-0.5" size={20} />
-                    <p className="text-sm font-medium">{errorMessage}</p>
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-8 flex items-center gap-3 p-4 bg-red-950/30 border border-red-900/50 text-red-500 rounded-xl max-w-xl w-full">
+                    <AlertCircle className="shrink-0" size={24} />
+                    <p className="font-medium">{errorMessage}</p>
+                    <button onClick={reset} className="ml-auto underline text-sm hover:text-red-400">Zamknij</button>
                   </motion.div>
                 )}
               </motion.div>
             )}
 
-            {/* 2. ANALYZING SPINNER */}
+            {/* ANALYZING VIEW */}
             {step === "analyzing" && (
-              <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center py-16 text-center">
-                <Loader2 size={64} className="text-indigo-400 animate-spin mb-6" />
-                <h3 className="text-2xl font-bold text-white mb-2">Trwa analiza i wykrywanie...</h3>
-                <p className="text-slate-400">Wykonujemy system OCR i szukamy tytułów sekcji.</p>
+              <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex flex-col items-center justify-center">
+                <Loader2 size={48} className="animate-spin text-white mb-6" />
+                <h3 className="text-xl font-medium">Analizowanie dokumentu...</h3>
+                <p className="text-neutral-500 mt-2">Przygotowujemy układ wizualny dokumentu i podział.</p>
               </motion.div>
             )}
 
-            {/* 3. REVIEW WIZARD */}
+            {/* REVIEW VIEW (PAGES GRID) */}
             {step === "review" && (
-              <motion.div key="review" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="flex flex-col gap-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/40 p-5 rounded-2xl border border-slate-700/50">
-                  <div>
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                      <Edit3 size={20} className="text-indigo-400" />
-                      Zweryfikuj Podział
-                    </h3>
-                    <p className="text-sm text-slate-400 mt-1">Dokument posiada {totalPages} stron(y). Dostosuj nazwy i granice.</p>
-                  </div>
-                  <button onClick={addSection} className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white text-sm font-medium rounded-lg transition-all">
-                    <Plus size={16} /> Dodaj Sekcję
-                  </button>
-                </div>
-
-                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
-                  {sections.length === 0 && <p className="text-slate-500 text-center py-4">Brak dodanych sekcji. Użyj przycisku wyżej by zacząć cięcie od zera.</p>}
-
-                  <Reorder.Group axis="y" values={sections} onReorder={setSections} className="space-y-3">
-                    {sections.map((sec, idx) => (
-                      <Reorder.Item
-                        key={sec.id}
-                        value={sec}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="group flex flex-col md:flex-row items-center gap-4 bg-slate-800/80 hover:bg-slate-800 p-4 rounded-xl border border-slate-700 transition-colors cursor-grab active:cursor-grabbing"
-                      >
-                        <div className="w-full md:w-1/2">
-                          <label className="text-xs uppercase text-slate-500 font-semibold mb-1 block text-indigo-200">⇕ Przeciągnij by zmienić kolejność</label>
-                          <input
-                            type="text"
-                            value={sec.title}
-                            onChange={(e) => updateSection(sec.id, "title", e.target.value)}
-                            onFocus={(e) => e.target.select()}
-                            onPointerDown={(e) => e.stopPropagation()}
-                            className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-medium cursor-text"
-                            placeholder="Np. Umowa Cesji"
-                          />
+              <motion.div 
+                key="review" 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }} 
+                className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"
+              >
+                {(pageUrls || []).map((url, i) => {
+                  const pageNum = i + 1;
+                  const colorConfig = getPageSectionColor(pageNum);
+                  
+                  return (
+                    <motion.div 
+                      key={pageNum}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.05 }}
+                      onClick={() => assignPageToActiveSection(pageNum)}
+                      className={cn(
+                        "relative flex flex-col items-center cursor-pointer transition-all duration-200 group bg-neutral-950 p-2 rounded-xl",
+                        colorConfig ? `ring-4 ring-offset-4 ring-offset-neutral-900 ${colorConfig.border.replace('border-','ring-')} scale-[1.02] z-10 ${colorConfig.shadow}` : "hover:scale-[1.02] border border-neutral-800"
+                      )}
+                    >
+                      <div className="w-full aspect-[1/1.41] bg-white rounded-lg overflow-hidden relative shadow-lg">
+                        <img 
+                          src={url} 
+                          alt={`Page ${pageNum}`} 
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                        <div className="absolute bottom-2 left-2 bg-black/80 backdrop-blur-sm text-white px-2 py-1 rounded text-xs font-bold font-mono">
+                          {pageNum}
                         </div>
-
-                        <div className="flex gap-4 w-full md:w-auto">
-                          <div className="w-1/2 md:w-24">
-                            <label className="text-xs uppercase text-slate-500 font-semibold mb-1 block">Od Strony</label>
-                            <input
-                              type="number"
-                              min={1} max={totalPages}
-                              value={sec.startPage}
-                              onChange={(e) => updateSection(sec.id, "startPage", e.target.value === "" ? "" : parseInt(e.target.value))}
-                              onFocus={(e) => e.target.select()}
-                              onPointerDown={(e) => e.stopPropagation()}
-                              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none text-center cursor-text transition-all focus:ring-2 focus:ring-indigo-500"
-                            />
+                        {colorConfig && (
+                          <div className={cn("absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-black border-2 border-black/10", colorConfig.bg)}>
+                             <CheckCircle2 size={16} />
                           </div>
-                          <div className="w-1/2 md:w-24">
-                            <label className="text-xs uppercase text-slate-500 font-semibold mb-1 block">Do Strony</label>
-                            <input
-                              type="number"
-                              min={1} max={totalPages}
-                              value={sec.endPage}
-                              onChange={(e) => updateSection(sec.id, "endPage", e.target.value === "" ? "" : parseInt(e.target.value))}
-                              onFocus={(e) => e.target.select()}
-                              onPointerDown={(e) => e.stopPropagation()}
-                              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none text-center cursor-text transition-all focus:ring-2 focus:ring-indigo-500"
-                            />
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={() => removeSection(sec.id)}
-                          onPointerDown={(e) => e.stopPropagation()}
-                          className="p-2 md:mt-5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors shrink-0 z-10"
-                          title="Usuń sekcję"
-                        >
-                          <Trash2 size={20} />
-                        </button>
-                      </Reorder.Item>
-                    ))}
-                  </Reorder.Group>
-                </div>
-
-                <div className="flex justify-end pt-4 border-t border-slate-700/50 gap-4 mt-2">
-                  <button onClick={reset} className="px-5 py-2.5 rounded-xl text-slate-400 hover:text-white transition-colors">
-                    Anuluj
-                  </button>
-                  <button onClick={startSplit} className="px-6 py-2.5 bg-indigo-500 hover:bg-indigo-400 text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/25 transition-all w-full sm:w-auto">
-                    Zatwierdź i Podziel Pliki
-                  </button>
-                </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </motion.div>
             )}
 
-            {/* 4. SPLITTING SPINNER */}
+            {/* SPLITTING VIEW */}
             {step === "splitting" && (
-              <motion.div key="splitting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center py-16 text-center">
-                <Loader2 size={64} className="text-indigo-400 animate-spin mb-6" />
-                <h3 className="text-2xl font-bold text-white mb-2">Wycinanie Sekcji...</h3>
-                <p className="text-slate-400">Przetwarzanie i pakowanie do formatu ZIP.</p>
+              <motion.div key="splitting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex flex-col items-center justify-center">
+                <Loader2 size={48} className="animate-spin text-white mb-6" />
+                <h3 className="text-xl font-medium">Wycinanie i kompresja...</h3>
+                <p className="text-neutral-500 mt-2">Dzielenie PDF i generowanie pliku ZIP ze skonfigurowanymi sekcjami.</p>
               </motion.div>
             )}
 
-            {/* 5. DONE */}
+            {/* DONE VIEW */}
             {step === "done" && (
-              <motion.div key="done" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="mb-6 p-4 bg-emerald-500/20 rounded-full">
-                  <CheckCircle2 size={64} className="text-emerald-400" />
+              <motion.div key="done" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="h-full flex flex-col items-center justify-center text-center max-w-lg mx-auto">
+                <div className="mb-8 bg-neutral-800 p-6 rounded-full shadow-[0_0_40px_rgba(255,255,255,0.1)]">
+                  <CheckCircle2 size={64} className="text-white" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">Cięcie Zakończone!</h3>
-                <p className="text-slate-400 mb-8 max-w-md">Dokumenty zostały wycięte z plików bazowych według Twoich ram czasowych i są gotowe do pobrania.</p>
+                <h2 className="text-4xl font-extrabold mb-4">Ukończono sukcesem!</h2>
+                <p className="text-neutral-400 mb-10 text-lg">Strony z dokumentu zostały rozdzielone zgodnie z Twoimi preferencjami.</p>
 
-                <div className="flex gap-4">
-                  <a href={downloadUrl} download="Podzielone_Dokumenty.zip" className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 transition-all hover:-translate-y-0.5">
-                    <Download size={20} /> Pobierz ZIP
+                <div className="flex flex-col sm:flex-row gap-4 w-full">
+                  <a href={downloadUrl} download="Podzielone_Dokumenty.zip" onClick={() => { setTimeout(reset, 2000) }} className="flex-1 flex items-center justify-center gap-2 px-8 py-5 bg-white text-black font-bold text-lg rounded-xl shadow-xl transition-all hover:scale-105 active:scale-95">
+                    <Download size={24} /> Pobierz Plik ZIP
                   </a>
-                  <button onClick={reset} className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-all">
+                  <button onClick={reset} className="px-8 py-5 bg-transparent hover:bg-neutral-800 text-neutral-300 font-semibold text-lg rounded-xl transition-all active:scale-95 border-2 border-neutral-700">
                     Nowy Plik
                   </button>
                 </div>
               </motion.div>
             )}
-
           </AnimatePresence>
-        </motion.div>
+        </div>
+
+        {/* Copyright */}
+        <div className="absolute bottom-6 left-6 text-xs text-neutral-500 font-medium bg-black/40 px-3 py-1.5 rounded-full backdrop-blur z-20">
+          &copy; {new Date().getFullYear()} Artur Gilowski all rights reserved
+        </div>
       </div>
 
-      <div className="absolute bottom-4 left-0 w-full text-center text-xs text-slate-500/50 pointer-events-none font-medium tracking-wide">
-        &copy; {new Date().getFullYear()} Artur Gilowski all rights reserved
+      {/* PRAWA STRONA - ZARZĄDZANIE SEKCJAMI */}
+      <div className="w-full md:w-[450px] shrink-0 flex flex-col bg-neutral-900 border border-neutral-800 rounded-3xl p-6 h-[50vh] md:h-full relative">
+        <div className="flex items-center justify-between mb-6 border-b border-neutral-800 pb-4 shrink-0">
+          <div>
+            <h2 className="text-xl font-bold">Podziały dokumentu</h2>
+            <p className="text-neutral-500 text-xs mt-1">Zaznacz podział i wybierz strony z lewej</p>
+          </div>
+          {(step === "review" || step === "upload" || step === "analyzing") && (
+            <button 
+              onClick={addSection} 
+              disabled={step !== "review"}
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed border border-neutral-700 text-white text-sm font-semibold rounded-lg transition-all active:scale-95"
+            >
+              <Plus size={16} /> Dodaj Podział
+            </button>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
+          {sections.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center opacity-50 px-4">
+              <FileText size={48} className="mb-4 text-neutral-600" />
+              <p>Wgraj plik PDF,<br/>aby rozpocząć.</p>
+            </div>
+          ) : (
+             <AnimatePresence>
+               {sections.map((sec, idx) => {
+                 const pagesCount = Object.values(pageAssignments).filter(id => id === sec.id).length;
+                 const isActive = activeSectionId === sec.id;
+                 const colorClass = SECTION_COLORS[sec.colorIndex].border;
+
+                 return (
+                   <motion.div
+                     key={sec.id}
+                     layout
+                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                     animate={{ opacity: 1, y: 0, scale: 1 }}
+                     exit={{ opacity: 0, scale: 0.9, height: 0, marginBottom: 0, overflow: "hidden" }}
+                     onClick={() => setActiveSectionId(sec.id)}
+                     className={cn(
+                       "relative group flex flex-col p-5 rounded-2xl border-2 transition-all cursor-pointer shadow-lg",
+                       isActive ? `bg-neutral-950 ${colorClass}` : "bg-neutral-800 border-neutral-700 hover:border-neutral-600"
+                     )}
+                   >
+                     <div className={cn("absolute left-0 top-0 bottom-0 w-2 transition-all rounded-l-xl", SECTION_COLORS[sec.colorIndex].bg, isActive ? "w-2" : "w-1 group-hover:w-2")} />
+
+                     <div className="pl-3 flex flex-col gap-4">
+                       <div className="flex items-start justify-between gap-3">
+                         <div className="flex-1">
+                           <label className={cn("text-[11px] uppercase tracking-wider font-bold mb-1.5 block", isActive ? colorClass.replace('border-', 'text-') : "text-neutral-400")}>
+                             Nazwa Pliku po pobraniu
+                           </label>
+                           <input
+                             type="text"
+                             value={sec.title}
+                             onChange={(e) => updateSectionTitle(sec.id, e.target.value)}
+                             onClick={(e) => e.stopPropagation()}
+                             className="w-full bg-transparent border-b-2 border-transparent hover:border-neutral-600 focus:border-white px-0 py-1 text-white text-lg focus:outline-none transition-all font-semibold"
+                             placeholder="Wpisz nazwę podziału..."
+                           />
+                         </div>
+                         <button
+                           onClick={(e) => { e.stopPropagation(); removeSection(sec.id); }}
+                           className="p-2.5 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded-xl transition-all"
+                           title="Usuń sekcję"
+                         >
+                           <Trash2 size={20} />
+                         </button>
+                       </div>
+                       
+                       <div className="flex items-center justify-between">
+                         <div className={cn("px-3 py-1.5 rounded-md text-xs font-bold ring-1", pagesCount > 0 ? "bg-white text-black ring-white" : "bg-neutral-900 text-neutral-400 ring-neutral-700")}>
+                           {pagesCount} STRON(Y)
+                         </div>
+                         {isActive ? (
+                           <div className="text-xs font-bold text-white flex items-center gap-2">
+                             <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                             Klikaj na strony
+                           </div>
+                         ) : (
+                           <div className="text-xs font-semibold text-neutral-500">Kliknij by aktywować</div>
+                         )}
+                       </div>
+                     </div>
+
+                     <button
+                       onClick={(e) => { e.stopPropagation(); addSectionAt(idx + 1); }}
+                       className="absolute -bottom-3.5 left-1/2 -translate-x-1/2 w-7 h-7 flex items-center justify-center bg-neutral-900 border border-neutral-700 hover:bg-neutral-700 text-neutral-400 hover:text-white transition-all shadow-xl opacity-0 group-hover:opacity-100 z-20 scale-75 group-hover:scale-100"
+                       title="Dodaj nową sekcję poniżej"
+                     >
+                       <Plus size={14} />
+                     </button>
+                   </motion.div>
+                 );
+               })}
+             </AnimatePresence>
+          )}
+        </div>
+
+        {/* BOTTOM AKCJE */}
+        <div className="pt-6 mt-4 border-t border-neutral-800 flex flex-col gap-3 shrink-0">
+           <div className="text-xs text-neutral-500 font-medium text-center pb-2 px-4">
+             Wszystkie sekcje mające minimum 1 przypisaną stronę zostaną eksportowane w jednym pliku ZIP.
+           </div>
+           <button 
+             onClick={startSplit} 
+             disabled={step !== "review"}
+             className={cn(
+               "w-full py-5 font-bold text-lg rounded-xl transition-all shadow-[0_0_30px_rgba(255,255,255,0.05)]",
+               step === "review" 
+                 ? "bg-white hover:bg-neutral-200 text-black active:scale-[0.98]" 
+                 : "bg-neutral-800 text-neutral-500 cursor-not-allowed"
+             )}
+           >
+             Podziel Dokumenty
+           </button>
+        </div>
       </div>
 
       <style dangerouslySetInnerHTML={{
         __html: `
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #52525b; }
       `}} />
     </main>
   );

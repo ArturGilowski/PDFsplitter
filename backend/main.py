@@ -10,6 +10,7 @@ from typing import List
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import uvicorn
 import pdf2image
@@ -35,6 +36,9 @@ UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
 
+# Serve uploads folder to frontend as static files so frontend can show thumbnails
+app.mount("/api/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+
 def check_dependencies():
     missing = []
     if not os.path.exists(TESSERACT_CMD):
@@ -58,14 +62,12 @@ def health_check():
 class SectionDef(BaseModel):
     id: str
     title: str
-    startPage: int # 1-indexed
-    endPage: int   # 1-indexed
+    pages: List[int] # nowa logika: przyjmujemy rowniez z nieciągłymi nr stron (1-indexed)
 
 class SplitRequest(BaseModel):
     file_id: str
     sections: List[SectionDef]
 
-# Złota lista zwrotów wskazanych przez użytkownika
 KEYWORDS = [
     "Umowa cesji", 
     "Załącznik nr 1", 
@@ -81,18 +83,16 @@ KEYWORDS = [
 def normalize_text(text: str) -> str:
     if not text:
         return ""
-    # Usuwa znaki diakrytyczne (np. ą->a, ł->l, ę->e) i zostawia czyste ASCII
     return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('utf-8')
 
-# Budujemy regex dopasowujący dowolne z powyższych po znormalizowaniu na ASCII
 REGEX_PATTERN = "(?i)(" + "|".join([normalize_text(k).replace(" ", r"\s+") for k in KEYWORDS]) + ")"
 
 
 @app.post("/api/analyze")
 async def analyze_pdf(file: UploadFile = File(...)):
     """
-    Krok 1: Wgrywa PDF, konwertuje na obrazy, wyłapuje słowa kluczowe OCR-em, 
-    i zwraca predykcje podziału.
+    Krok 1: Wgrywa PDF, konwertuje na obrazy.
+    Zwraca ścieżki do obrazów dla lewego panelu frontendowego.
     """
     missing = check_dependencies()
     if missing:
@@ -101,15 +101,18 @@ async def analyze_pdf(file: UploadFile = File(...)):
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Plik musi być w formacie PDF")
 
-    file_id = f"{uuid.uuid4()}.pdf"
-    pdf_path = os.path.join(UPLOADS_DIR, file_id)
+    file_id = str(uuid.uuid4())
+    file_dir = os.path.join(UPLOADS_DIR, file_id)
+    os.makedirs(file_dir, exist_ok=True)
+    
+    pdf_path = os.path.join(file_dir, "doc.pdf")
     
     # Zapis
     content = await file.read()
     with open(pdf_path, "wb") as f:
         f.write(content)
 
-    # Konwersja
+    # Konwersja na obrazy JPEG (do miniatur)
     try:
         images = pdf2image.convert_from_path(pdf_path, poppler_path=POPPLER_PATH)
     except Exception as e:
@@ -117,10 +120,18 @@ async def analyze_pdf(file: UploadFile = File(...)):
 
     total_pages = len(images)
     detected_sections = []
+    page_urls = []
     
-    # OCR loop
     for i, img in enumerate(images):
         page_num = i + 1 # 1-indexed
+        
+        # Zapis do JPEG dla frontend preview
+        jpg_filename = f"page_{page_num}.jpg"
+        jpg_path = os.path.join(file_dir, jpg_filename)
+        img.save(jpg_path, "JPEG")
+        page_urls.append(f"http://localhost:8000/api/uploads/{file_id}/{jpg_filename}")
+        
+        section_found = False
         try:
             try:
                 text = pytesseract.image_to_string(img, lang="pol")
@@ -130,10 +141,7 @@ async def analyze_pdf(file: UploadFile = File(...)):
             norm_text = normalize_text(text)
             match = re.search(REGEX_PATTERN, norm_text)
             if match:
-                # Oczyszczenie tytułu np. z nadmiarowych spacji po środku
                 clean_title = re.sub(r'\s+', ' ', match.group(0)).strip()
-                # Postarajmy się przywrócić ładną polską nazwę na podstawie dopasowania
-                # Sprawdzamy, które słowo ze słownika zmatchowało by nadać mu idealny, wielokolumnowy tytuł
                 matched_nice_title = clean_title.title()
                 for kw in KEYWORDS:
                     if normalize_text(kw).lower().replace(" ", "") == clean_title.lower().replace(" ", ""):
@@ -143,48 +151,32 @@ async def analyze_pdf(file: UploadFile = File(...)):
                 detected_sections.append({
                     "id": str(uuid.uuid4()),
                     "title": matched_nice_title,
-                    "startPage": page_num,
-                    "endPage": total_pages # Tymczasowo do końca dokumentu
+                    "pages": [page_num] 
                 })
+                section_found = True
         except Exception as e:
             print(f"Błąd OCR strona {page_num}: {e}")
             pass
-
-    # Jeśli nic nie znaleziono (lub na 1 stronie nic nie było), dajemy domyślną sekcję
-    if not detected_sections:
-        detected_sections.append({
-            "id": str(uuid.uuid4()),
-            "title": "Główny Część (Nie wykryto)",
-            "startPage": 1,
-            "endPage": total_pages
-        })
-    else:
-        # Jeśli pierwsza znaleziona sekcja nie jest na stronie 1, dodaj 'Początek'
-        if detected_sections[0]["startPage"] > 1:
-            detected_sections.insert(0, {
-                "id": str(uuid.uuid4()),
-                "title": "Początek Dokumentu",
-                "startPage": 1,
-                "endPage": detected_sections[0]["startPage"] - 1
-            })
             
-        # Zwiń endPage dla poprzednich sekcji
-        for idx in range(len(detected_sections) - 1):
-            detected_sections[idx]["endPage"] = detected_sections[idx+1]["startPage"] - 1
+        if not section_found and len(detected_sections) > 0:
+            detected_sections[-1]["pages"].append(page_num)
 
     return {
         "file_id": file_id,
         "original_filename": file.filename,
         "total_pages": total_pages,
+        "page_urls": page_urls,
         "sections": detected_sections
     }
 
 @app.post("/api/split")
 async def split_pdf(request: SplitRequest):
     """
-    Krok 2: Tnie wcześniej wysłany plik wg ustalonych przez użytkownika przedziałów stron
+    Krok 2: Tnie wg tablic `pages` wskazanych przez użytkownika
     """
-    pdf_path = os.path.join(UPLOADS_DIR, request.file_id)
+    file_dir = os.path.join(UPLOADS_DIR, request.file_id)
+    pdf_path = os.path.join(file_dir, "doc.pdf")
+    
     if not os.path.exists(pdf_path):
         raise HTTPException(status_code=404, detail="Plik nie istnieje lub sesja wygasła.")
 
@@ -193,33 +185,28 @@ async def split_pdf(request: SplitRequest):
     zip_buffer = io.BytesIO()
     
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for sec in request.sections:
+        for idx, sec in enumerate(request.sections):
             writer = PdfWriter()
-            # Upewnienie się że strony są w bezpiecznych zakresach
-            start = max(1, sec.startPage)
-            end = min(total_pdf_pages, sec.endPage)
-            
-            if start > end:
-                continue # Pomiń błędne ramy
+            valid_pages = sorted([p for p in sec.pages if 1 <= p <= total_pdf_pages])
+            if not valid_pages:
+                continue
                 
-            for page_idx in range(start - 1, end): # convert 1-indexed do 0-indexed
-                writer.add_page(reader.pages[page_idx])
+            for page_num in valid_pages:
+                writer.add_page(reader.pages[page_num - 1]) 
                 
-            # Czyszczenie nazwy pliku
             safe_title = re.sub(r'[<>:"/\\|?*]', '_', sec.title)
-            safe_title = safe_title[:50] # limit długości
-            part_filename = f"{safe_title}_{sec.startPage}-{sec.endPage}.pdf"
+            safe_title = safe_title[:50]
+            part_filename = f"{idx+1}_{safe_title}.pdf"
             
-            # Bezpieczne zapisanie w pamięci ram i skompresowanie
             pdf_bytes = io.BytesIO()
             writer.write(pdf_bytes)
             zip_file.writestr(part_filename, pdf_bytes.getvalue())
 
     zip_buffer.seek(0)
     
-    # Optional cleanup (usuwamy stary plik zaraz po kompresji)
+    # Czyszczenie całego folderu sesji
     try:
-        os.remove(pdf_path)
+        shutil.rmtree(file_dir)
     except:
         pass
         
