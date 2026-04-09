@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jak to działa? - PDF AI Splitter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #050505;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .hero-gradient {
+            background: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+        }
+        .step-number {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+        }
+    </style>
+</head>
+<body class="relative min-h-screen">
+    <div class="fixed inset-0 hero-gradient pointer-events-none"></div>
+
+    <!-- Navigation -->
+    <nav class="relative z-50 flex items-center justify-between px-8 py-8 md:px-24">
+        <a href="index.html" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                <i data-lucide="scissors" class="text-white"></i>
+            </div>
+            <span class="text-2xl font-bold tracking-tighter italic">PDF AI Splitter</span>
+        </a>
+        <a href="index.html" class="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors font-medium">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i> Wróć do strony głównej
+        </a>
+    </nav>
+
+    <!-- Content -->
+    <main class="relative z-10 px-8 py-12 md:px-24 max-w-5xl mx-auto">
+        <div class="mb-24">
+            <h1 class="text-4xl md:text-6xl font-extrabold mb-8 tracking-tight">Dlaczego stworzyliśmy <span class="text-blue-500">PDF Splitter</span>?</h1>
+            <div class="glass p-8 md:p-12 rounded-[2rem] text-xl text-neutral-300 leading-relaxed shadow-2xl">
+                <p class="mb-6">
+                    W dzisiejszym świecie dokumenty cyfrowe stają się coraz potężniejsze. Często pracujemy z plikami PDF liczącymi setki stron – fakturami zbiorczymi, raportami rocznymi czy dokumentacją techniczną. Zarządzanie takim kolosem tradycyjnymi metodami jest frustrujące i czasochłonne.
+                </p>
+                <p class="mb-6">
+                    Naszą misją było stworzenie narzędzia, które **uwalnia Cię od żmudnego przeglądania każdej strony**. Chcieliśmy, aby dzielenie ogromnych plików na mniejsze, tematyczne dokumenty było tak proste, jak kliknięcie myszką.
+                </p>
+                <p>
+                    Dzięki inteligencji AI, proces ten przestaje być ręczną pracą, a staje się intuicyjnym zarządzaniem, gdzie Ty kontrolujesz strukturę, a komputer zajmuje się całą resztą.
+                </p>
+            </div>
+        </div>
+
+        <!-- How it works steps -->
+        <h2 class="text-3xl font-bold mb-16 text-center">Proces prostszy niż myślisz</h2>
+        
+        <div class="space-y-12">
+            <!-- Step 1 -->
+            <div class="flex flex-col md:flex-row gap-8 items-start">
+                <div class="step-number w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-bold shrink-0">1</div>
+                <div class="glass flex-1 p-8 rounded-3xl">
+                    <h3 class="text-2xl font-bold mb-4 flex items-center gap-3">
+                        <i data-lucide="upload-cloud" class="text-blue-500"></i> Wgrywasz Plik
+                    </h3>
+                    <p class="text-neutral-400">Przeciągasz swój duży plik PDF do okna aplikacji. System automatycznie go przyjmuje i przygotowuje do analizy lokalnej.</p>
+                </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="flex flex-col md:flex-row gap-8 items-start">
+                <div class="step-number w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-bold shrink-0">2</div>
+                <div class="glass flex-1 p-8 rounded-3xl">
+                    <h3 class="text-2xl font-bold mb-4 flex items-center gap-3">
+                        <i data-lucide="scan-eye" class="text-blue-500"></i> AI Analizuje Treść
+                    </h3>
+                    <p class="text-neutral-400">Zaawansowany silnik OCR skanuje każdą stronę w poszukiwaniu logicznych nagłówków i przerw. Algorytm sugeruje, gdzie najprawdopodobniej kończy się jeden dokument, a zaczyna drugi.</p>
+                </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="flex flex-col md:flex-row gap-8 items-start">
+                <div class="step-number w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-bold shrink-0">3</div>
+                <div class="glass flex-1 p-8 rounded-3xl">
+                    <h3 class="text-2xl font-bold mb-4 flex items-center gap-3">
+                        <i data-lucide="mouse-pointer-2" class="text-blue-500"></i> Ty Zarządzasz
+                    </h3>
+                    <p class="text-neutral-400">W przejrzystym podglądzie (3 kolumny) wybierasz strony i przypisujesz je do własnych sekcji. Możesz nadać każdemu nowemu plikowi konkretną nazwę, która będzie użyta przy eksporcie.</p>
+                </div>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="flex flex-col md:flex-row gap-8 items-start">
+                <div class="step-number w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-bold shrink-0">4</div>
+                <div class="glass flex-1 p-8 rounded-3xl">
+                    <h3 class="text-2xl font-bold mb-4 flex items-center gap-3">
+                        <i data-lucide="file-check-2" class="text-blue-500"></i> Gotowe!
+                    </h3>
+                    <p class="text-neutral-400">Jednym kliknięciem dzielisz dokument. Aplikacja generuje paczkę ZIP zawierającą wszystkie Twoje nowe pliki PDF, profesjonalnie nazwane i idealnie przycięte.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="mt-32 text-center p-16 glass rounded-[3rem] border border-blue-500/20">
+            <h2 class="text-3xl font-bold mb-6">Gotowy, by uporządkować swoje dokumenty?</h2>
+            <p class="text-neutral-400 mb-10 max-w-xl mx-auto">Pobierz darmowy instalator i przekonaj się, jak PDF AI Splitter może zmienić Twoją codzienną pracę.</p>
+            <a href="Setup-PDF-Splitter.bat" download class="inline-flex items-center gap-3 px-12 py-5 bg-blue-600 rounded-2xl text-xl font-bold hover:bg-blue-500 transition-all shadow-xl hover:scale-105">
+                <i data-lucide="download"></i> Pobierz Teraz
+            </a>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="relative z-10 px-8 py-16 md:px-24 border-t border-neutral-900 flex flex-col items-center mt-20">
+        <p class="text-neutral-500 text-sm mb-2 italic">&copy; 2026 PDF AI Splitter.</p>
+        <p class="text-neutral-600 text-xs">Twój czas jest zbyt cenny na ręczne dzielenie stron.</p>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
