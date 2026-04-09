@@ -52,3 +52,52 @@ if (Test-Path $exePath) {
 } else {
     Write-Host ">>> Coś poszło nie tak – nie znaleziono skrótu na pulpicie. Sprawdź folder: $installPath" -ForegroundColor Red
 }
+
+
+------------------------------------------------------------------------------------
+
+$repoZip = "https://github.com/ArturGilowski/PDFsplitter/archive/refs/heads/main.zip"
+$installPath = "$env:LOCALAPPDATA\PDFsplitter"
+$zipPath = "$env:TEMP\PDFsplitter.zip"
+$extractPath = "$env:TEMP\PDFsplitter-main"
+
+Write-Host ">>> Rozpoczynam instalację PDF Splitter w: $installPath" -ForegroundColor Cyan
+
+if (!(Test-Path $installPath)) { 
+    New-Item -ItemType Directory -Path $installPath -Force | Out-Null 
+}
+
+Write-Host ">>> Pobieranie najnowszej wersji z GitHub..." -ForegroundColor Cyan
+Invoke-WebRequest -Uri $repoZip -OutFile $zipPath
+
+Write-Host ">>> Rozpakowywanie plików..." -ForegroundColor Cyan
+
+if (Test-Path $extractPath) { Remove-Item -Path $extractPath -Recurse -Force }
+
+Expand-Archive -Path $zipPath -DestinationPath $env:TEMP -Force
+
+Copy-Item -Path "$extractPath\*" -Destination $installPath -Recurse -Force
+
+Remove-Item -Path $extractPath -Recurse -Force
+Remove-Item -Path $zipPath -Force
+
+Set-Location $installPath
+if (Test-Path ".\install.ps1") {
+    Write-Host ">>> Rozpoczynam automatyczną konfigurację środowiska (Python, Node, Tesseract)..." -ForegroundColor Yellow
+    Write-Host ">>> ZAAKCEPTUJ PROŚBĘ O UPRAWNIENIA ADMINISTRATORA W NOWYM OKNIE! <<<" -ForegroundColor Yellow
+
+    $installScript = Join-Path $installPath "install.ps1"
+    
+    $args = '-NoProfile -ExecutionPolicy Bypass -File "' + $installScript + '"'
+    Start-Process -FilePath "powershell.exe" -ArgumentList $args -Verb RunAs -Wait
+}
+
+$desktopPath = [Environment]::GetFolderPath("Desktop")
+$exePath = Join-Path $desktopPath "PDF Splitter.lnk"
+
+if (Test-Path $exePath) {
+    Write-Host ">>> Instalacja zakończona sukcesem! Uruchamiam aplikację..." -ForegroundColor Green
+    Start-Process $exePath
+} else {
+    Write-Host ">>> Coś poszło nie tak – nie znaleziono skrótu na pulpicie. Sprawdź folder: $installPath" -ForegroundColor Red
+}
