@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF AI Splitter - Nowoczesne Dzielenie Dokumentów</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #050505;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px border-neutral-800;
+        }
+        .hero-gradient {
+            background: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.15) 0%, transparent 50%);
+        }
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        .btn-premium {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-premium:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
+        }
+    </script>
+</head>
+<body class="relative min-h-screen">
+    <div class="fixed inset-0 hero-gradient pointer-events-none"></div>
+
+    <!-- Navigation -->
+    <nav class="relative z-50 flex items-center justify-between px-8 py-8 md:px-24">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                <i data-lucide="scissors" class="text-white"></i>
+            </div>
+            <span class="text-2xl font-bold tracking-tighter italic">PDF AI Splitter</span>
+        </div>
+        <div class="hidden md:flex items-center gap-8 text-neutral-400 font-medium">
+            <a href="#features" class="hover:text-white transition-colors">Funkcje</a>
+            <a href="#how-to" class="hover:text-white transition-colors">Jak to działa</a>
+            <a href="https://github.com/ArturGilowski/PDFsplitter" target="_blank" class="flex items-center gap-2 hover:text-white transition-colors">
+                <i data-lucide="github" class="w-5 h-5"></i> GitHub
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative z-10 px-8 pt-12 md:px-24 md:pt-24 flex flex-col md:flex-row items-center gap-16">
+        <div class="flex-1 text-center md:text-left">
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight leading-tight mb-6">
+                Inteligentne <span class="text-blue-500">dzielenie</span> plików PDF z mocą <span class="text-blue-400 uppercase">AI</span>.
+            </h1>
+            <p class="text-xl text-neutral-400 mb-10 max-w-xl">
+                Odkryj najszybszy sposób na dzielenie dokumentów. Nasz model AI automatycznie rozpoznaje sekcje dzięki silnikowi OCR, tworząc gotowe, nazwane pliki w kilka sekund.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+                <a href="Setup-PDF-Splitter.bat" download class="btn-premium px-10 py-5 rounded-2xl text-lg font-bold flex items-center justify-center gap-3">
+                    <i data-lucide="download" class="w-6 h-6"></i> Pobierz Instalator (.bat)
+                </a>
+                <a href="#how-to" class="px-10 py-5 rounded-2xl text-lg font-bold bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 transition-all flex items-center justify-center">
+                    Dowiedz się więcej
+                </a>
+            </div>
+            <p class="mt-4 text-xs text-neutral-500 italic">Uwaga: Instalator Windows (.bat) automatycznie pobierze i skonfiguruje aplikację.</p>
+        </div>
+        <div class="flex-1 relative animate-float">
+            <div class="absolute inset-0 bg-blue-500/20 blur-[100px] rounded-full"></div>
+            <img src="hero.png" alt="PDF AI Splitter Preview" class="relative z-10 w-full rounded-3xl border border-neutral-800 shadow-2xl glass p-2 mask-linear">
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="relative z-10 px-8 py-32 md:px-24">
+        <div class="text-center mb-20">
+            <h2 class="text-4xl font-bold mb-4">Moc ukryta pod maską</h2>
+            <p class="text-neutral-400">Wszystko, czego potrzebujesz do profesjonalnej pracy z dokumentami.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="glass p-8 rounded-3xl border border-neutral-800/50">
+                <i data-lucide="scan-text" class="w-12 h-12 text-blue-500 mb-6"></i>
+                <h3 class="text-xl font-bold mb-3">Silnik AI & OCR</h3>
+                <p class="text-neutral-400 leading-relaxed">System Tesseract 5.4 automatycznie analizuje tekst, wykrywa nagłówki i sugeruje logiczne punkty podziału dokumentu.</p>
+            </div>
+            <div class="glass p-8 rounded-3xl border border-neutral-800/50">
+                <i data-lucide="layout-grid" class="w-12 h-12 text-blue-500 mb-6"></i>
+                <h3 class="text-xl font-bold mb-3">Podgląd Premium</h3>
+                <p class="text-neutral-400 leading-relaxed">Przejrzysty widok 3 kolumn pozwala na błyskawiczne zarządzanie stronami i przydzielanie ich do odpowiednich sekcji.</p>
+            </div>
+            <div class="glass p-8 rounded-3xl border border-neutral-800/50">
+                <i data-lucide="zap" class="w-12 h-12 text-blue-500 mb-6"></i>
+                <h3 class="text-xl font-bold mb-3">Bezpieczeństwo Local-First</h3>
+                <p class="text-neutral-400 leading-relaxed">Twoje dane nie opuszczają Twojego komputera. Cały proces OCR i generowania PDF odbywa się lokalnie.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="relative z-10 px-8 py-16 md:px-24 border-t border-neutral-900 flex flex-col items-center">
+        <p class="text-neutral-500 text-sm mb-4 italic">&copy; 2026 PDF AI Splitter. Wszelkie prawa zastrzeżone.</p>
+        <p class="text-neutral-600 text-xs">Strona wygenerowana dla Artur Gilowski Portfolio</p>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
