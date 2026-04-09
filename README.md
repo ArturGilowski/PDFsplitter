@@ -1,103 +1,63 @@
-# Konfiguracja repozytorium
-$repoZip = "https://github.com/ArturGilowski/PDFsplitter/archive/refs/heads/main.zip"
-$installPath = "$env:LOCALAPPDATA\PDFsplitter"
-$zipPath = "$env:TEMP\PDFsplitter.zip"
-$extractPath = "$env:TEMP\PDFsplitter-main"
+# ✂️ PDF AI Splitter
 
-Write-Host ">>> Rozpoczynam instalację PDF Splitter w: $installPath" -ForegroundColor Cyan
+<p align="center">
+  <img src="docs/hero.png" alt="PDF AI Splitter Banner" width="800">
+</p>
 
-# 1. Tworzenie folderu docelowego
-if (!(Test-Path $installPath)) { 
-    New-Item -ItemType Directory -Path $installPath -Force | Out-Null 
-}
+<p align="center">
+  <strong>Inteligentne i błyskawiczne dzielenie plików PDF z mocą AI (OCR).</strong>
+</p>
 
-# 2. Pobieranie paczki ZIP
-Write-Host ">>> Pobieranie najnowszej wersji z GitHub..." -ForegroundColor Cyan
-Invoke-WebRequest -Uri $repoZip -OutFile $zipPath
+<p align="center">
+  <a href="https://ArturGilowski.github.io/PDFsplitter/">
+    <img src="https://img.shields.io/badge/ZOBACZ_STRONĘ_PROJEKTU-blue?style=for-the-badge" alt="Live Demo">
+  </a>
+</p>
 
-# 3. Rozpakowywanie i czyszczenie
-Write-Host ">>> Rozpakowywanie plików..." -ForegroundColor Cyan
-# Czyścimy folder tymczasowy jeśli istniał
-if (Test-Path $extractPath) { Remove-Item -Path $extractPath -Recurse -Force }
+---
 
-Expand-Archive -Path $zipPath -DestinationPath $env:TEMP -Force
+### 🔴 UWAGA: KOMPATYBILNOŚĆ
+**Aplikacja została zaprojektowana i zoptymalizowana WYŁĄCZNIE dla systemu operacyjnego WINDOWS.** Korzysta ona z systemowych skryptów PowerShell oraz specyficznych instalatorów narzędzi OCR dedykowanych dla tego systemu.
 
-# Kopiowanie zawartości (GitHub dodaje '-main' do nazwy folderu w ZIP)
-Copy-Item -Path "$extractPath\*" -Destination $installPath -Recurse -Force
+---
 
-# Sprzątanie plików tymczasowych
-Remove-Item -Path $extractPath -Recurse -Force
-Remove-Item -Path $zipPath -Force
+## 💡 O Projekcie
 
-# 4. Uruchomienie głównego skryptu instalacyjnego środowiska
-Set-Location $installPath
-if (Test-Path ".\install.ps1") {
-    Write-Host ">>> Rozpoczynam automatyczną konfigurację środowiska (Python, Node, Tesseract)..." -ForegroundColor Yellow
-    Write-Host ">>> ZAAKCEPTUJ PROŚBĘ O UPRAWNIENIA ADMINISTRATORA W NOWYM OKNIE! <<<" -ForegroundColor Yellow
+**PDF AI Splitter** powstał, aby rozwiązać problem żmudnego zarządzania ogromnymi plikami PDF. Jeśli kiedykolwiek musiałeś "ręcznie" wycinać faktury ze zbiorczego pliku liczącego setki stron, to narzędzie jest dla Ciebie. 
 
-    $installScript = Join-Path $installPath "install.ps1"
-    
-    # Uruchamiamy install.ps1 jako Administrator
-    $args = '-NoProfile -ExecutionPolicy Bypass -File "' + $installScript + '"'
-    Start-Process -FilePath "powershell.exe" -ArgumentList $args -Verb RunAs -Wait
-}
+Dzięki połączeniu **FastAPI (Python)** oraz **Next.js**, aplikacja pozwala na:
+- **Automatyczne rozpoznawanie sekcji**: Silnik Tesseract OCR skanuje tekst i sugeruje punkty podziału.
+- **Wizualne zarządzanie**: Intuicyjny podgląd 3-kolumnowy z możliwością nazywania plików "w locie".
+- **Local-First**: Wszystkie operacje (OCR, cięcie PDF) odbywają się na Twoim komputerze. Twoje dane są bezpieczne i prywatne.
 
-# 5. Weryfikacja i uruchomienie skrótu
-$desktopPath = [Environment]::GetFolderPath("Desktop")
-$exePath = Join-Path $desktopPath "PDF Splitter.lnk"
+## 🛠️ Stack Techniczny
 
-if (Test-Path $exePath) {
-    Write-Host ">>> Instalacja zakończona sukcesem! Uruchamiam aplikację..." -ForegroundColor Green
-    Start-Process $exePath
-} else {
-    Write-Host ">>> Coś poszło nie tak – nie znaleziono skrótu na pulpicie. Sprawdź folder: $installPath" -ForegroundColor Red
-}
+| Warstwa | Technologie |
+| :--- | :--- |
+| **Frontend** | ![Next.js](https://img.shields.io/badge/next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white) ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white) |
+| **Backend** | ![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat-square&logo=fastapi) |
+| **Silnik OCR** | Tesseract OCR 5.4 |
+| **Instalacja** | PowerShell & Batch Automation |
 
+## 🚀 Szybka Instalacja
 
-------------------------------------------------------------------------------------
+Nie musisz konfigurować środowiska ręcznie. Przygotowaliśmy automatyczny instalator:
 
-$repoZip = "https://github.com/ArturGilowski/PDFsplitter/archive/refs/heads/main.zip"
-$installPath = "$env:LOCALAPPDATA\PDFsplitter"
-$zipPath = "$env:TEMP\PDFsplitter.zip"
-$extractPath = "$env:TEMP\PDFsplitter-main"
+1. Pobierz plik [Setup-PDF-Splitter.bat](https://github.com/ArturGilowski/PDFsplitter/raw/main/docs/Setup-PDF-Splitter.bat).
+2. Uruchom go jako **Administrator**.
+3. Skrypt sam pobierze potrzebne komponenty i stworzy skrót **PDF Splitter** na Twoim pulpicie.
 
-Write-Host ">>> Rozpoczynam instalację PDF Splitter w: $installPath" -ForegroundColor Cyan
+---
 
-if (!(Test-Path $installPath)) { 
-    New-Item -ItemType Directory -Path $installPath -Force | Out-Null 
-}
+### 🔧 Informacje dla Deweloperów
 
-Write-Host ">>> Pobieranie najnowszej wersji z GitHub..." -ForegroundColor Cyan
-Invoke-WebRequest -Uri $repoZip -OutFile $zipPath
+Jeśli chcesz uruchomić projekt lokalnie w trybie deweloperskim:
+1. Skonfiguruj backend: `cd backend && python -m venv venv && .\venv\Scripts\activate && pip install -r requirements.txt`
+2. Skonfiguruj frontend: `cd frontend && npm install`
+3. Uruchom serwery: `.\run-servers.bat`
 
-Write-Host ">>> Rozpakowywanie plików..." -ForegroundColor Cyan
-
-if (Test-Path $extractPath) { Remove-Item -Path $extractPath -Recurse -Force }
-
-Expand-Archive -Path $zipPath -DestinationPath $env:TEMP -Force
-
-Copy-Item -Path "$extractPath\*" -Destination $installPath -Recurse -Force
-
-Remove-Item -Path $extractPath -Recurse -Force
-Remove-Item -Path $zipPath -Force
-
-Set-Location $installPath
-if (Test-Path ".\install.ps1") {
-    Write-Host ">>> Rozpoczynam automatyczną konfigurację środowiska (Python, Node, Tesseract)..." -ForegroundColor Yellow
-    Write-Host ">>> ZAAKCEPTUJ PROŚBĘ O UPRAWNIENIA ADMINISTRATORA W NOWYM OKNIE! <<<" -ForegroundColor Yellow
-
-    $installScript = Join-Path $installPath "install.ps1"
-    
-    $args = '-NoProfile -ExecutionPolicy Bypass -File "' + $installScript + '"'
-    Start-Process -FilePath "powershell.exe" -ArgumentList $args -Verb RunAs -Wait
-}
-
-$desktopPath = [Environment]::GetFolderPath("Desktop")
-$exePath = Join-Path $desktopPath "PDF Splitter.lnk"
-
-if (Test-Path $exePath) {
-    Write-Host ">>> Instalacja zakończona sukcesem! Uruchamiam aplikację..." -ForegroundColor Green
-    Start-Process $exePath
-} else {
-    Write-Host ">>> Coś poszło nie tak – nie znaleziono skrótu na pulpicie. Sprawdź folder: $installPath" -ForegroundColor Red
-}
+---
+<p align="center">
+  Stworzone przez <b>Artur Gilowski</b>. Wszystkie prawa zastrzeżone © 2026.
+</p>
+---
