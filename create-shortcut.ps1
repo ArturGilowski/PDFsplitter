@@ -8,8 +8,8 @@ $Shortcut.TargetPath = "powershell.exe"
 $Shortcut.Arguments = "-WindowStyle Hidden -Command ""Start-Process cmd -ArgumentList '/c', '""$batPath""' -WindowStyle Hidden"""
 $Shortcut.WorkingDirectory = $PSScriptRoot
 
-# Use a built-in Windows icon 
-$Shortcut.IconLocation = "shell32.dll, 274"
+# Use the custom application icon
+$Shortcut.IconLocation = "$PSScriptRoot\docs\app-icon.ico"
 $Shortcut.Description = "Włącz lokalną bazę OCR i program do dzielenia PDF-ów"
 $Shortcut.Save()
 
