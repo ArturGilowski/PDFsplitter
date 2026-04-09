@@ -1,41 +1,103 @@
+# Konfiguracja repozytorium
+$repoZip = "https://github.com/ArturGilowski/PDFsplitter/archive/refs/heads/main.zip"
+$installPath = "$env:LOCALAPPDATA\PDFsplitter"
+$zipPath = "$env:TEMP\PDFsplitter.zip"
+$extractPath = "$env:TEMP\PDFsplitter-main"
 
-$repoZip = "https://github.com/ArturGilowski/pPDFsplitter/archive/refs/heads/main.zip"
-$installPath = "$env:LOCALAPPDATA\pdfsplitapp"
-$zipPath = "$env:TEMP\pdfsplitapp.zip"
+Write-Host ">>> Rozpoczynam instalację PDF Splitter w: $installPath" -ForegroundColor Cyan
 
-Write-Host "Rozpoczynam instalacje w: $installPath" -ForegroundColor Cyan
-
-if (!(Test-Path $installPath)) {
-New-Item -ItemType Directory -Path $installPath -Force | Out-Null
+# 1. Tworzenie folderu docelowego
+if (!(Test-Path $installPath)) { 
+    New-Item -ItemType Directory -Path $installPath -Force | Out-Null 
 }
 
-Set-Location $installPath
-
-Write-Host "Pobieranie paczki aplikacji bez logowania..." -ForegroundColor Cyan
+# 2. Pobieranie paczki ZIP
+Write-Host ">>> Pobieranie najnowszej wersji z GitHub..." -ForegroundColor Cyan
 Invoke-WebRequest -Uri $repoZip -OutFile $zipPath
 
-Write-Host "Rozpakowywanie plikow..." -ForegroundColor Cyan
+# 3. Rozpakowywanie i czyszczenie
+Write-Host ">>> Rozpakowywanie plików..." -ForegroundColor Cyan
+# Czyścimy folder tymczasowy jeśli istniał
+if (Test-Path $extractPath) { Remove-Item -Path $extractPath -Recurse -Force }
+
 Expand-Archive -Path $zipPath -DestinationPath $env:TEMP -Force
-Copy-Item -Path "$env:TEMP\pdfsplitapp-main\*" -Destination $installPath -Recurse -Force
-Remove-Item -Path "$env:TEMP\pdfsplitapp-main" -Recurse -Force
+
+# Kopiowanie zawartości (GitHub dodaje '-main' do nazwy folderu w ZIP)
+Copy-Item -Path "$extractPath\*" -Destination $installPath -Recurse -Force
+
+# Sprzątanie plików tymczasowych
+Remove-Item -Path $extractPath -Recurse -Force
 Remove-Item -Path $zipPath -Force
 
+# 4. Uruchomienie głównego skryptu instalacyjnego środowiska
+Set-Location $installPath
 if (Test-Path ".\install.ps1") {
-Write-Host "Rozpoczynam zautomatyzowana instalacje srodowisk uruchomieniowych..." -ForegroundColor Yellow
-Write-Host ">>> ZAAKCEPTUJ PROSBE O UPRAWNIENIA ADMINISTRATORA W NOWYM OKNIE! <<<" -ForegroundColor Yellow
+    Write-Host ">>> Rozpoczynam automatyczną konfigurację środowiska (Python, Node, Tesseract)..." -ForegroundColor Yellow
+    Write-Host ">>> ZAAKCEPTUJ PROŚBĘ O UPRAWNIENIA ADMINISTRATORA W NOWYM OKNIE! <<<" -ForegroundColor Yellow
 
-$installScript = Join-Path $installPath "install.ps1"
+    $installScript = Join-Path $installPath "install.ps1"
+    
+    # Uruchamiamy install.ps1 jako Administrator
+    $args = '-NoProfile -ExecutionPolicy Bypass -File "' + $installScript + '"'
+    Start-Process -FilePath "powershell.exe" -ArgumentList $args -Verb RunAs -Wait
+}
 
-$args = '-NoExit -NoProfile -ExecutionPolicy Bypass -File "' + $installScript + '"'
-Start-Process -FilePath "powershell.exe" -ArgumentList $args -Verb RunAs -Wait
+# 5. Weryfikacja i uruchomienie skrótu
+$desktopPath = [Environment]::GetFolderPath("Desktop")
+$exePath = Join-Path $desktopPath "PDF Splitter.lnk"
+
+if (Test-Path $exePath) {
+    Write-Host ">>> Instalacja zakończona sukcesem! Uruchamiam aplikację..." -ForegroundColor Green
+    Start-Process $exePath
+} else {
+    Write-Host ">>> Coś poszło nie tak – nie znaleziono skrótu na pulpicie. Sprawdź folder: $installPath" -ForegroundColor Red
+}
+
+
+------------------------------------------------------------------------------------
+
+$repoZip = "https://github.com/ArturGilowski/PDFsplitter/archive/refs/heads/main.zip"
+$installPath = "$env:LOCALAPPDATA\PDFsplitter"
+$zipPath = "$env:TEMP\PDFsplitter.zip"
+$extractPath = "$env:TEMP\PDFsplitter-main"
+
+Write-Host ">>> Rozpoczynam instalację PDF Splitter w: $installPath" -ForegroundColor Cyan
+
+if (!(Test-Path $installPath)) { 
+    New-Item -ItemType Directory -Path $installPath -Force | Out-Null 
+}
+
+Write-Host ">>> Pobieranie najnowszej wersji z GitHub..." -ForegroundColor Cyan
+Invoke-WebRequest -Uri $repoZip -OutFile $zipPath
+
+Write-Host ">>> Rozpakowywanie plików..." -ForegroundColor Cyan
+
+if (Test-Path $extractPath) { Remove-Item -Path $extractPath -Recurse -Force }
+
+Expand-Archive -Path $zipPath -DestinationPath $env:TEMP -Force
+
+Copy-Item -Path "$extractPath\*" -Destination $installPath -Recurse -Force
+
+Remove-Item -Path $extractPath -Recurse -Force
+Remove-Item -Path $zipPath -Force
+
+Set-Location $installPath
+if (Test-Path ".\install.ps1") {
+    Write-Host ">>> Rozpoczynam automatyczną konfigurację środowiska (Python, Node, Tesseract)..." -ForegroundColor Yellow
+    Write-Host ">>> ZAAKCEPTUJ PROŚBĘ O UPRAWNIENIA ADMINISTRATORA W NOWYM OKNIE! <<<" -ForegroundColor Yellow
+
+    $installScript = Join-Path $installPath "install.ps1"
+    
+    $args = '-NoProfile -ExecutionPolicy Bypass -File "' + $installScript + '"'
+    Start-Process -FilePath "powershell.exe" -ArgumentList $args -Verb RunAs -Wait
 }
 
 $desktopPath = [Environment]::GetFolderPath("Desktop")
 $exePath = Join-Path $desktopPath "PDF Splitter.lnk"
 
 if (Test-Path $exePath) {
-Write-Host "Instalacja zakonczona mega sukcesem! Odpalam okno..." -ForegroundColor Green
-Start-Process $exePath
+    Write-Host ">>> Instalacja zakończona sukcesem! Uruchamiam aplikację..." -ForegroundColor Green
+    Start-Process $exePath
 } else {
-Write-Host "Cós poszlo nie tak z instalatorem - brak PDF Splitter.lnk" -ForegroundColor Red
-}  
+    Write-Host ">>> Coś poszło nie tak – nie znaleziono skrótu na pulpicie. Sprawdź folder: $installPath" -ForegroundColor Red
+}
