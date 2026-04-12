@@ -5,6 +5,68 @@
 </p>
 
 <p align="center">
+  <strong>Intelligent and lightning-fast PDF splitting powered by AI (OCR).</strong>
+</p>
+
+<p align="center">
+  <a href="https://ArturGilowski.github.io/PDFsplitter/">
+    <img src="https://img.shields.io/badge/VISIT_PROJECT_WEBSITE-blue?style=for-the-badge" alt="Live Demo">
+  </a>
+</p>
+
+---
+
+### 🔴 IMPORTANT: COMPATIBILITY
+**This application is designed and optimized EXCLUSIVELY for the WINDOWS operating system.** It uses system PowerShell scripts and specific OCR tool installers dedicated to this platform.
+
+---
+
+## 💡 About the Project
+
+**PDF AI Splitter** was created to solve the problem of tedious management of huge PDF files. If you've ever had to "manually" cut invoices from a 500-page batch file, this tool is for you.
+
+By combining **FastAPI (Python)** and **Next.js**, the application allows for:
+- **Automatic Section Recognition**: The Tesseract OCR engine scans text and suggests split points.
+- **Visual Management**: Intuitive 3-column preview with the ability to rename files "on the fly".
+- **Local-First**: All operations (OCR, PDF cutting) take place on your computer. Your data is safe and private.
+
+## 🛠️ Tech Stack
+
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | ![Next.js](https://img.shields.io/badge/next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white) ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white) |
+| **Backend** | ![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat-square&logo=fastapi) |
+| **OCR Engine** | Tesseract OCR 5.4 |
+| **Installation** | PowerShell & Batch Automation |
+
+## 🚀 Quick Installation
+
+You don't need to configure the environment manually. We have prepared an automatic installer:
+
+1. Download the [Setup-PDF-Splitter.bat](https://github.com/ArturGilowski/PDFsplitter/raw/main/docs/Setup-PDF-Splitter.bat) file.
+2. Run it as **Administrator**.
+3. The script will automatically download the necessary components and create a **PDF Splitter** shortcut on your desktop.
+
+---
+
+### 🔧 Information for Developers
+
+If you want to run the project locally in development mode:
+1. Configure backend: `cd backend && python -m venv venv && .\venv\Scripts\activate && pip install -r requirements.txt`
+2. Configure frontend: `cd frontend && npm install`
+3. Start servers: `.\run-servers.bat`
+
+---
+<p align="center">
+  Created by <b>Artur Gilowski</b>. All rights reserved © 2026.
+</p>
+
+---
+---
+
+# ✂️ PDF AI Splitter (Wersja Polska)
+
+<p align="center">
   <strong>Inteligentne i błyskawiczne dzielenie plików PDF z mocą AI (OCR).</strong>
 </p>
 
